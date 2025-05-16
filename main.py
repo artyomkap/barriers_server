@@ -24,16 +24,14 @@ async def init_models():
         await conn.run_sync(Base.metadata.create_all)
 
 
-app.include_router(api_router)
-app.include_router(clients.router)
-app.include_router(deals.router)
-app.include_router(task.router)
-app.include_router(report.router)
+app.include_router(api_router, prefix="/api")
+app.include_router(clients.router, prefix="/api")
+app.include_router(deals.router, prefix="/api")
+app.include_router(task.router, prefix="/api")
+app.include_router(report.router, prefix="/api")
 
 origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://891f-223-206-62-234.ngrok-free.app"
+    "https://barriers-services.ru"
 ]
 
 app.add_middleware(
@@ -44,12 +42,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app = FastAPI(
+    title="FastAPI with Aiogram and SQLAlchemy",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc"
+)
+
+
 
 # Aiogram startup
 @app.on_event("startup")
 async def startup_event():
     await init_models()
-
 
 
 @app.exception_handler(FastAPIHTTPException)
