@@ -1,46 +1,16 @@
-from asyncio import tasks
-
-import uvicorn
 from fastapi import FastAPI
-
-from api import deals, clients, task, report
-from api.routers import router as api_router
-from database.connect import engine
-from database.models import Base
-import asyncio
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
+from database.connect import engine
+from database.models import Base
+
+from api import deals, clients, task, report
+from api.routers import router as api_router
 
 load_dotenv()
-
-app = FastAPI(title="FastAPI with Aiogram and SQLAlchemy")
-
-
-async def init_models():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
-app.include_router(api_router, prefix="/api")
-app.include_router(clients.router, prefix="/api")
-app.include_router(deals.router, prefix="/api")
-app.include_router(task.router, prefix="/api")
-app.include_router(report.router, prefix="/api")
-
-origins = [
-    "https://barriers-services.ru"
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 app = FastAPI(
     title="FastAPI with Aiogram and SQLAlchemy",
@@ -49,15 +19,32 @@ app = FastAPI(
     openapi_url="/api/openapi.json"
 )
 
+# Подключение роутеров
+app.include_router(api_router, prefix="/api")
+app.include_router(clients.router, prefix="/api")
+app.include_router(deals.router, prefix="/api")
+app.include_router(task.router, prefix="/api")
+app.include_router(report.router, prefix="/api")
 
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://barriers-services.ru"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# Миграция
+async def init_models():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-# Aiogram startup
 @app.on_event("startup")
 async def startup_event():
     await init_models()
 
-
+# Обработка ошибок
 @app.exception_handler(FastAPIHTTPException)
 async def custom_http_exception_handler(request: Request, exc: FastAPIHTTPException):
     return JSONResponse(
@@ -65,6 +52,7 @@ async def custom_http_exception_handler(request: Request, exc: FastAPIHTTPExcept
         content={"detail": exc.detail},
     )
 
-
+# Запуск
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
